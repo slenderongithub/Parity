@@ -1,0 +1,11 @@
+# Host build artefacts must not leak into the images: node_modules built on the
+# host OS would break inside Alpine, and .venv is a macOS-specific tree.
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+.venv
+frontend/dist
+.git
+.env
+*.db-wal
+*.db-shm

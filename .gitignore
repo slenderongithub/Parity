@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+node_modules/
+frontend/dist/
+.niti/
+.DS_Store
+uploads/
+
+# SQLite WAL sidecars; data/facts.db itself is committed deliberately
+*.db-wal
+*.db-shm
