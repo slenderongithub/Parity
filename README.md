@@ -258,7 +258,81 @@ local embeddings.
 
 ## The four required cases
 
-*(populated from the shipped database — see `data/facts.db`)*
+Pulled straight from the shipped database with `python backend/report_cases.py` — nothing
+below is hard-coded to these documents; the same queries run against any corpus.
+
+### 1. Corroborated across documents
+
+> **A:** Delhivery Limited · revenue from services = **₹8,142 Cr** `[FY24]`
+> source: *Investor Presentation Q4 & FY24* p.6 (verbatim) — *"FY24 revenue from services"*
+>
+> **B:** Delhivery Limited · Revenue from services = **81,415.38** `[March 31, 2024]`
+> source: *Annual Report 2023-24* p.85 (verbatim) — *"Revenue from services\* 81,415.38 72,236.47"*
+
+`decided_by=llm`, similarity 1.000. Reasoning: *"₹8,142 Cr is a rounded representation of
+81,415.38 million INR for the same fiscal year."* Two different documents, two different
+units (crore vs. million), same underlying fact — caught without any hard-coded knowledge
+of what "revenue from services" means.
+
+### 2. A genuine contradiction
+
+> **A:** India · CPI inflation projection = **4.0 per cent** `[2025-26]`
+> source: *RBI Annual Report* p.17 (reflowed) — *"CPI inflation for 2025-26 is projected at
+> 4.0 per cent, with risks evenly balanced."*
+>
+> **B:** India · RBI inflation projection = **4.2 per cent** `[FY26]`
+> source: *Economic Survey 2024-25* p.87 (verbatim) — *"the RBI expects headline inflation
+> to be 4.2 per cent in FY26."*
+
+`decided_by=llm`, similarity 0.884, confidence 0.95. Same institution's own projection for
+the same fiscal year, reported two different ways in two documents — a real conflict, not
+an artifact of units or timing.
+
+### 3. Apparent contradiction reconciled by context
+
+> **A:** Delhivery Limited · Reported EBITDA = **46** `[Q4 FY24]`
+> source: *Investor Presentation* p.23 (verbatim) — *"Reported EBITDA 13 109 46 (452) 127"*
+>
+> **B:** Delhivery Limited · adjusted EBITDA = **₹758 Mn** `[FY24]`
+> source: *Annual Report 2023-24* p.4 (reflowed) — *"Adjusted EBITDA ₹758 Mn"*
+
+`decided_by=llm`, similarity 0.924, confidence 1.0. Reasoning: *"the figures represent
+different metrics — Reported EBITDA of 46 Mn for Q4 FY24 versus Adjusted EBITDA of 758 Mn
+for the full FY24."* Two numbers that would look contradictory in isolation are reconciled
+once **scope** (quarter vs. full year) and **measure** (reported vs. adjusted) are both
+accounted for — exactly the kind of qualifier the extraction schema exists to capture.
+
+### 4. A reasoning failure, found and only partly handled
+
+Entity resolution conflates the document's **publisher** with its **subject**. The
+context pass for the RBI Annual Report set `primary_entity = "Reserve Bank of India"`
+(the report's author) instead of `"India"` (what most of its numeric claims are actually
+about), so macro facts from that document got stored with subject `Reserve Bank of India`:
+
+> **A:** subject stored as `Reserve Bank of India` (its own document's publisher — wrong)
+> external debt to GDP ratio = **19.1 per cent** `[as at end-December 2024]`
+> source: *RBI Annual Report* p.89 (reflowed) — *"India's external debt to GDP ratio
+> remained modest at 19.1 per cent as at end-December 2024"*
+>
+> **B:** subject stored as `India` (correct)
+> external debt to GDP ratio = **18.8 per cent** `[end of June 2024]`
+> source: *Economic Survey 2024-25* p.73 (verbatim)
+
+The system still linked A and B (`reconciled_time`, similarity 0.948) — but only because
+claim-key embedding similarity was forgiving enough to survive the wrong subject string.
+Identity did no real work here; a stricter entity check would have missed this pair
+entirely. **Found** by a generic query (`report_cases.py`'s "entity resolution" section:
+any fact whose subject equals its own document's publisher, still linked to a fact with a
+different subject) — no filename or entity name is hard-coded, so the same query would
+catch this failure mode in an unseen document. **Handled partially**: the doc-context and
+extraction prompts (`backend/extract.py`) now explicitly instruct the model that
+`primary_entity` is "what the numbers are about," not "who published this," and to never
+resolve a country/economy claim to the publisher's name — which should reduce this for
+future ingests, though it wasn't re-run against the shipped corpus to avoid spending more
+of the free API quota re-extracting documents that already work. **Would still improve**:
+a real fix needs a per-fact subject rather than a single per-document `primary_entity`, and
+an entity table with alias clustering so subjects match by identity, not string/embedding
+similarity — see Limitations #3.
 
 ---
 
@@ -284,12 +358,10 @@ evidence exists, not that the reasoning from it was right.
 
 **3. Entity resolution is shallow, and confuses the publisher with the subject.**
 `"the Company"` and `"we"` are resolved to the document's primary entity, but there is no
-global entity registry. Worse, the context pass sets the RBI Annual Report's primary
-entity to *"Reserve Bank of India"*, so facts about **India's** GDP are stored with
-subject `Reserve Bank of India` — the publisher, not the thing being measured. The system
-still matched them against the Economic Survey's `India` facts, but only because embedding
-similarity was forgiving (0.84); identity did no work at all.
-*Next:* separate `publisher` from `subject` in the extraction schema, and add an entity
+global entity registry — see the full walkthrough of a real instance of this (RBI Annual
+Report facts stored under subject `Reserve Bank of India` instead of `India`) in
+**Case 4** above, including the prompt change made in response.
+*Next:* a per-fact subject instead of one per-document `primary_entity`, plus an entity
 table with alias clustering so subjects match by identity rather than string similarity.
 
 **4. Unitless quantities are not normalized.** `"18.8 msf"` and `"3,730"` both parse as

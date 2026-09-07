@@ -54,10 +54,18 @@ class DocContext(BaseModel):
 DOC_CONTEXT_PROMPT = """You are cataloguing a document for a fact-extraction system.
 From these opening pages, identify the document's identity.
 
+publisher: who produced/issued the document. Almost never who its facts are about.
+primary_entity: the organisation or economy MOST of the document's factual claims
+describe — this is what "the Company", "the Group" or "we" refer to later, when those
+phrases mean the publisher. It is NOT automatically the publisher: an institution's
+report can be chiefly about a different subject (e.g. a central bank's annual report
+whose tables are mostly national economic indicators — GDP, inflation, trade — is
+about the country, not the bank, even though the bank wrote it and its own balance
+sheet appears too). Pick primary_entity by asking "what do most of the numbers in
+this document describe?", not "who published this?" — if that is genuinely a country
+or economy rather than the publisher, name the country/economy instead.
 fy_convention: "IN" if the document uses April-March fiscal years (typical for Indian
 companies and Indian government/RBI publications), otherwise "CY".
-primary_entity: the organisation or economy the document is chiefly about — this is what
-"the Company", "the Group", "we" or "the economy" refer to later in the document.
 Use "" for anything you cannot determine. Do not guess.
 
 PAGES:
@@ -89,8 +97,12 @@ RULES
    reflow it. It is checked character-by-character against the source and discarded on
    mismatch.
 2. page: the [[page N]] marker the quote physically sits under.
-3. subject: resolve "the Company", "the Group", "we" and "the economy" to the primary
-   entity named above. If the claim is about a segment or sub-entity, name that instead.
+3. subject: resolve "the Company", "the Group" and "we" to the primary entity named
+   above. If the claim is about a segment or sub-entity, name that instead. If the claim
+   is about a country/economy/national aggregate (GDP, inflation, trade deficit, a
+   sector's growth), the subject is that country or economy by name — never the
+   publisher, even when the publisher is a government body or central bank reporting on
+   it in the same breath as its own institutional facts.
 4. qualifiers: record anything that changes what the number means and would otherwise
    make two figures look contradictory — basis (consolidated/standalone), segment,
    measure variant (revenue from services vs revenue from operations), adjustments
