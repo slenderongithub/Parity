@@ -209,16 +209,16 @@ knowledge of what "revenue from services" means.
 
 ### 2. A genuine contradiction
 
-**A:** India · CPI inflation projection = **4.0 per cent** `[2025-26]`
-source: *RBI Annual Report* p.17 — *"CPI inflation for 2025-26 is projected at 4.0 per
-cent, with risks evenly balanced."*
+**A:** India · growth in industrial sector = **4.3%** `[2024-25]`
+source: *RBI Annual Report 2024-25* p.8 — *"Growth in industrial sector moderated to
+4.3 per cent in 2024-25, primarily due to deceleration in manufacturing GVA."*
 
-**B:** India · RBI inflation projection = **4.2 per cent** `[FY26]`
-source: *Economic Survey 2024-25* p.87 — *"the RBI expects headline inflation to be 4.2
-per cent in FY26."*
+**B:** India · industrial sector is estimated to grow by = **6.2 per cent** `[FY25]`
+source: *Economic Survey 2024-25* p.14 — *"The industrial sector is estimated to grow
+by 6.2 per cent in FY25."*
 
-Same institution's own projection for the same fiscal year, stated two different ways
-in two documents. Not a units problem — a real conflict.
+Same sector, same year, two institutions, two different numbers. Not a units or
+timing problem — a real conflict.
 
 ### 3. Apparent contradiction, reconciled by context
 
@@ -232,12 +232,12 @@ Two numbers that would look contradictory side by side turn out to differ on sco
 (quarter vs. full year) and measure (reported vs. adjusted) — exactly what the
 qualifier fields exist to capture.
 
-### 4. A reasoning failure, found and partly fixed
+### 4. A reasoning failure, found and fixed
 
-The document-context pass sometimes conflates a report's *publisher* with its
-*subject*. For the RBI Annual Report it set `primary_entity = "Reserve Bank of India"`
-instead of `"India"` — so macro facts from that document got stored under the wrong
-subject:
+The document-context pass would sometimes conflate a report's *publisher* with its
+*subject*. For the RBI Annual Report it originally set
+`primary_entity = "Reserve Bank of India"` instead of `"India"` — so macro facts from
+that document got stored under the wrong subject:
 
 **A:** subject stored as `Reserve Bank of India` (its own publisher — wrong)
 external debt to GDP ratio = **19.1 per cent** `[end-December 2024]`
@@ -250,13 +250,23 @@ source: *Economic Survey 2024-25* p.73
 
 The system still linked A and B — but only because the embedding similarity was loose
 enough to survive the wrong subject string. A stricter identity check would have
-missed the pair entirely. I found this with a generic query — any fact whose subject
-equals its own document's publisher — and updated the extraction prompt to tell the
-model that `primary_entity` means "what the numbers are about," not "who published
-this." That should help on future ingests; I didn't re-run it against the shipped
-corpus, to avoid burning more of a small free API quota re-extracting documents that
-already work. The real fix is a per-fact subject instead of one per document, plus an
-entity table with alias clustering — see Limitations below.
+missed the pair entirely.
+
+I found this with a generic query (any fact whose subject equals its own document's
+publisher, still linked to a fact with a different subject) and updated the extraction
+prompt in `backend/extract.py` to tell the model that `primary_entity` means "what the
+numbers are about," not "who published this." To check the fix actually worked rather
+than just hoping it did, I deleted the RBI document from the database and re-ingested
+it under the updated prompt. Result: `primary_entity` now resolves to `India`, 112 of
+its 116 facts are correctly tagged subject `India`, and the remaining 3 are genuinely
+about the RBI itself (its own balance sheet, not the economy) — so that's correct too,
+not leftover breakage. Re-running the same generic query against the live corpus now
+returns **zero** matches for this failure mode.
+
+That confirms the specific bug is gone. It doesn't mean entity resolution is solved —
+there's still no global entity registry, and a document only gets one `primary_entity`
+rather than a subject per fact, so a document that genuinely discusses two entities
+would still blur them. See Limitations below.
 
 ---
 
@@ -274,7 +284,10 @@ Roughly in the order I'd tackle them.
 2. **Grounding proves the evidence exists, not that the reasoning from it was right.**
    A verbatim quote can still be attached to the wrong subject or period.
 
-3. **Entity resolution is shallow.** No global entity registry — see Case 4 above.
+3. **Entity resolution is shallow.** The specific publisher-vs-subject bug in Case 4
+   is fixed and verified — but there's still no global entity registry, and a document
+   only carries one `primary_entity` for all its facts. A document that genuinely
+   discusses two entities would still blur them together.
    Next: per-fact subjects instead of one per document, plus alias clustering.
 
 4. **Unitless quantities aren't normalized.** `"18.8 msf"` and `"3,730"` both parse as
