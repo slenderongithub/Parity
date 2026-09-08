@@ -68,9 +68,7 @@ and update `GEMINI_MODEL`.
 
 ## Video Demo
 
-*[link here]*
-
-A PDF being processed end to end, plus the four required cases below.
+https://drive.google.com/file/d/1uitXfRzM3mjijRKJyPW9h44z_CIrxjQ0/view?usp=sharing
 
 ---
 
