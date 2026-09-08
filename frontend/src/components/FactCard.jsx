@@ -7,13 +7,13 @@ export function FactCard({ fact, onClick, active }) {
     <button
       onClick={onClick}
       className={cn(
-        "w-full rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-left transition-colors",
+        "min-w-0 w-full rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-left transition-colors",
         "hover:border-zinc-600 hover:bg-zinc-900",
         active && "border-violet-500/60 bg-zinc-900",
         !fact.quote_verified && "border-dashed border-rose-500/30",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           <div className="truncate text-[13px] font-medium text-zinc-100">
             {fact.subject} · {fact.predicate}
@@ -21,7 +21,9 @@ export function FactCard({ fact, onClick, active }) {
           {quals && <div className="mt-0.5 truncate text-[11px] text-zinc-500">{quals}</div>}
         </div>
         {fact.value_raw ? (
-          <div className="shrink-0 font-mono text-[13px] text-violet-300">{fact.value_raw}</div>
+          <div className="min-w-0 max-w-full shrink break-words text-right font-mono text-[13px] text-violet-300">
+            {fact.value_raw}
+          </div>
         ) : null}
       </div>
 

@@ -15,7 +15,9 @@ function Side({ fact }) {
       {quals && <div className="mt-0.5 text-[11px] text-zinc-500">{quals}</div>}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {fact.value_raw && (
-          <span className="font-mono text-[13px] text-violet-300">{fact.value_raw}</span>
+          <span className="min-w-0 max-w-full break-words font-mono text-[13px] text-violet-300">
+            {fact.value_raw}
+          </span>
         )}
         {fact.period_raw && <Chip>{fact.period_raw}</Chip>}
       </div>

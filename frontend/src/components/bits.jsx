@@ -112,7 +112,7 @@ export function DecidedBy({ by }) {
 
 export function Quote({ children }) {
   return (
-    <blockquote className="border-l-2 border-zinc-600 pl-3 text-[13px] leading-relaxed text-zinc-300 italic">
+    <blockquote className="min-w-0 break-words border-l-2 border-zinc-600 pl-3 text-[13px] leading-relaxed text-zinc-300 italic">
       “{children}”
     </blockquote>
   );

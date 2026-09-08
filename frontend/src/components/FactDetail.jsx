@@ -48,14 +48,16 @@ export function FactDetail({ fact, onSelectFact }) {
       <div className="text-[11px] text-zinc-500">
         {fact.title || fact.filename} · page {fact.page}
       </div>
-      <h2 className="mt-1 text-[15px] font-semibold text-zinc-100">
+      <h2 className="mt-1 break-words text-[15px] font-semibold text-zinc-100">
         {fact.subject} · {fact.predicate}
       </h2>
-      {quals && <div className="mt-1 text-[12px] text-zinc-500">{quals}</div>}
+      {quals && <div className="mt-1 break-words text-[12px] text-zinc-500">{quals}</div>}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {fact.value_raw && (
-          <span className="font-mono text-[15px] text-violet-300">{fact.value_raw}</span>
+          <span className="min-w-0 max-w-full break-words font-mono text-[15px] text-violet-300">
+            {fact.value_raw}
+          </span>
         )}
         {fact.period_raw && <Chip>{fact.period_raw}</Chip>}
         <GroundedBadge
@@ -125,10 +127,12 @@ export function FactDetail({ fact, onSelectFact }) {
                   <div className="text-[11px] text-zinc-500">
                     {r.other.title || r.other.filename} · p.{r.other.page}
                   </div>
-                  <div className="text-[13px] text-zinc-200">
+                  <div className="break-words text-[13px] text-zinc-200">
                     {r.other.subject} · {r.other.predicate}{" "}
                     {r.other.value_raw && (
-                      <span className="font-mono text-violet-300">{r.other.value_raw}</span>
+                      <span className="break-words font-mono text-violet-300">
+                        {r.other.value_raw}
+                      </span>
                     )}{" "}
                     {r.other.period_raw && (
                       <span className="text-zinc-500">({r.other.period_raw})</span>

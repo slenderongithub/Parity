@@ -27,6 +27,18 @@ def _dedupe_key(f: dict) -> tuple:
     return (f.get("claim_key", ""), f.get("value_raw", ""), f.get("period_raw", ""))
 
 
+def _short_error(e: Exception) -> str:
+    """A one-line, human-readable summary of an LLM call failure.
+
+    The Gemini SDK's exception text is a multi-hundred-character dump of the raw API
+    error body (nested quota/retry JSON) - useful in server logs, not in the UI.
+    """
+    msg = str(e)
+    if "RESOURCE_EXHAUSTED" in msg or "429" in msg or "quota" in msg.lower():
+        return "Gemini free-tier quota exhausted for the day"
+    return msg.splitlines()[0][:160]
+
+
 def process_pdf(conn, path: str, filename: str):
     """Yield event dicts: doc, fact, relation, note, done."""
     pages = ingest.extract_pages(path, max_pages=MAX_PAGES)
@@ -70,7 +82,8 @@ def process_pdf(conn, path: str, filename: str):
             raw = extract.extract_chunk(ch.text, ctx, cap=FACTS_PER_CHUNK)
         except Exception as e:  # noqa: BLE001 - one bad chunk must not kill the upload
             yield {"event": "note", "level": "warn",
-                   "message": f"Extraction failed on pages {ch.start_page}-{ch.end_page}: {e}"}
+                   "message": f"Extraction failed on pages {ch.start_page}-{ch.end_page}: "
+                              f"{_short_error(e)}"}
             continue
 
         raw = extract.ground_facts(raw, page_map, range(ch.start_page, ch.end_page + 1))
@@ -222,7 +235,7 @@ def _limited_relate(rows, vecs, existing, already: int):
                 v = match.adjudicate(a, b, signals)
             except Exception as e:  # noqa: BLE001 - degrade, never abort ingestion
                 yield a, b, {"relation_type": "needs_review", "decided_by": "rule",
-                             "explanation": f"Adjudication call failed: {e}",
+                             "explanation": f"Adjudication call failed: {_short_error(e)}",
                              "confidence": 0.0, "similarity": sim}
                 continue
             if v.get("relation_type") == "unrelated":
